@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const TurndownService = require('turndown');
 
-const POSTS_DIR = '/Users/daniel/Downloads/Cleaned Blog Posts';
+const POSTS_DIR = process.env.POSTS_DIR || path.join(__dirname, '../data/blog-posts');
 
 // Attorney info
 const AUTHOR = {
