@@ -163,7 +163,7 @@ async function importArticles(strapi, authorDocumentId, categoryMap) {
       const markdown = htmlToMarkdown(rawHtml);
       const categoryDocumentId = assignCategory(filename, categoryMap);
 
-      await strapi.documents('api::article.article').create({
+      const created = await strapi.documents('api::article.article').create({
         data: {
           title,
           slug,
@@ -176,8 +176,13 @@ async function importArticles(strapi, authorDocumentId, categoryMap) {
               body: markdown,
             },
           ],
-          publishedAt: new Date().toISOString(),
         },
+        status: 'published',
+      });
+
+      // Explicitly publish in case status param isn't sufficient
+      await strapi.documents('api::article.article').publish({
+        documentId: created.documentId,
       });
 
       console.log(`  OK    ${slug}`);
