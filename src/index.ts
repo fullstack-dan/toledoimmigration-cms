@@ -1,8 +1,125 @@
 import type { Core } from '@strapi/strapi';
 import path from 'path';
 
+async function postToLinkedIn(
+  strapi: Core.Strapi,
+  title: string,
+  description: string,
+  url: string
+) {
+  const token = process.env.LINKEDIN_ACCESS_TOKEN;
+  const authorUrn = process.env.LINKEDIN_AUTHOR_URN;
+
+  if (!token || !authorUrn) {
+    strapi.log.warn('[Social] LinkedIn env vars not set, skipping.');
+    return;
+  }
+
+  const body = {
+    author: authorUrn,
+    commentary: `New blog post: ${title}\n\n${description}\n\n${url}`,
+    visibility: 'PUBLIC',
+    distribution: {
+      feedDistribution: 'MAIN_FEED',
+      targetEntities: [],
+      thirdPartyDistributionChannels: [],
+    },
+    content: {
+      article: { source: url, title, description },
+    },
+    lifecycleState: 'PUBLISHED',
+    isReshareDisabledByAuthor: false,
+  };
+
+  strapi.log.info('[Social] Posting to LinkedIn with payload:', JSON.stringify(body, null, 2));
+
+  const res = await fetch('https://api.linkedin.com/rest/posts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'LinkedIn-Version': '202604',
+      'X-Restli-Protocol-Version': '2.0.0',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    strapi.log.error(`[Social] LinkedIn post failed (${res.status}): ${text}`);
+  } else {
+    const text = await res.text();
+    strapi.log.info(`[Social] LinkedIn post published. Response: ${text}`);
+  }
+}
+
+async function postToFacebook(
+  strapi: Core.Strapi,
+  message: string,
+  url: string
+) {
+  const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  const pageId = process.env.FACEBOOK_PAGE_ID;
+
+  if (!token || !pageId) {
+    strapi.log.warn('[Social] Facebook env vars not set, skipping.');
+    return;
+  }
+
+  strapi.log.info(`[Social] Posting to Facebook page ${pageId} with message:`, message);
+
+  const params = new URLSearchParams({ message, link: url, access_token: token });
+
+  const res = await fetch(`https://graph.facebook.com/v25.0/${pageId}/feed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    strapi.log.error(`[Social] Facebook post failed (${res.status}): ${text}`);
+  } else {
+    const data = await res.json() as { id: string };
+    strapi.log.info(`[Social] Facebook post published. Post ID: ${data.id}`);
+  }
+}
+
 export default {
-  register(/* { strapi }: { strapi: Core.Strapi } */) {},
+  register({ strapi }: { strapi: Core.Strapi }) {
+    strapi.documents.use(async (context, next) => {
+      const result = await next();
+
+      if (
+        context.uid === 'api::article.article' &&
+        context.action === 'publish'
+      ) {
+        // Fetch the full document since the publish result may omit fields like slug
+        const documentId = (context.params as any)?.documentId;
+        const doc = await strapi.documents('api::article.article').findOne({
+          documentId,
+          fields: ['title', 'description', 'slug'],
+        }) as any;
+
+        strapi.log.info('[Social] Article published, posting to social media...', {
+          title: doc?.title,
+          slug: doc?.slug,
+        });
+
+        const { title, description, slug } = doc;
+        const siteUrl = process.env.FRONTEND_URL || '';
+        const postUrl = `${siteUrl}/blog/${slug}`;
+        const message = `${title}\n\n${description}\n\nRead more: ${postUrl}`;
+
+        await Promise.allSettled([
+          postToLinkedIn(strapi, title, description, postUrl),
+          postToFacebook(strapi, message, postUrl),
+        ]);
+      }
+
+      return result;
+    });
+  },
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     const pluginStore = strapi.store({
