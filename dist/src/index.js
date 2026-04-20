@@ -72,29 +72,35 @@ async function postToFacebook(strapi, message, url) {
 exports.default = {
     register({ strapi }) {
         strapi.documents.use(async (context, next) => {
-            var _a;
             const result = await next();
-            if (context.uid === 'api::article.article' &&
-                context.action === 'publish') {
-                // Fetch the full document since the publish result may omit fields like slug
-                const documentId = (_a = context.params) === null || _a === void 0 ? void 0 : _a.documentId;
-                const doc = await strapi.documents('api::article.article').findOne({
-                    documentId,
-                    fields: ['title', 'description', 'slug'],
-                });
-                strapi.log.info('[Social] Article published, posting to social media...', {
-                    title: doc === null || doc === void 0 ? void 0 : doc.title,
-                    slug: doc === null || doc === void 0 ? void 0 : doc.slug,
-                });
-                const { title, description, slug } = doc;
-                const siteUrl = process.env.FRONTEND_URL || '';
-                const postUrl = `${siteUrl}/blog/${slug}`;
-                const message = `${title}\n\n${description}\n\nRead more: ${postUrl}`;
-                await Promise.allSettled([
-                    postToLinkedIn(strapi, title, description, postUrl),
-                    postToFacebook(strapi, message, postUrl),
-                ]);
+            /* SOCIAL POSTING TEMPORARILY DISABLED — re-enable after bulk publish
+            if (
+              context.uid === 'api::article.article' &&
+              context.action === 'publish'
+            ) {
+              // Fetch the full document since the publish result may omit fields like slug
+              const documentId = (context.params as any)?.documentId;
+              const doc = await strapi.documents('api::article.article').findOne({
+                documentId,
+                fields: ['title', 'description', 'slug'],
+              }) as any;
+      
+              strapi.log.info('[Social] Article published, posting to social media...', {
+                title: doc?.title,
+                slug: doc?.slug,
+              });
+      
+              const { title, description, slug } = doc;
+              const siteUrl = process.env.FRONTEND_URL || '';
+              const postUrl = `${siteUrl}/blog/${slug}`;
+              const message = `${title}\n\n${description}\n\nRead more: ${postUrl}`;
+      
+              await Promise.allSettled([
+                postToLinkedIn(strapi, title, description, postUrl),
+                postToFacebook(strapi, message, postUrl),
+              ]);
             }
+            */
             return result;
         });
     },
