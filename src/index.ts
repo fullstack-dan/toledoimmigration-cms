@@ -90,7 +90,6 @@ export default {
     strapi.documents.use(async (context, next) => {
       const result = await next();
 
-      /* SOCIAL POSTING TEMPORARILY DISABLED — re-enable after bulk publish
       if (
         context.uid === 'api::article.article' &&
         context.action === 'publish'
@@ -117,7 +116,6 @@ export default {
           postToFacebook(strapi, message, postUrl),
         ]);
       }
-      */
 
       return result;
     });
