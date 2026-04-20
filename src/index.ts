@@ -89,7 +89,7 @@ export default {
   register({ strapi }: { strapi: Core.Strapi }) {
     strapi.documents.use(async (context, next) => {
       const result = await next();
-
+/*
       if (
         context.uid === 'api::article.article' &&
         context.action === 'publish'
@@ -116,6 +116,7 @@ export default {
           postToFacebook(strapi, message, postUrl),
         ]);
       }
+        */
 
       return result;
     });
