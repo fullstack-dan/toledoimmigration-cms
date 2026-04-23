@@ -89,7 +89,6 @@ export default {
   register({ strapi }: { strapi: Core.Strapi }) {
     strapi.documents.use(async (context, next) => {
       const result = await next();
-/*
       if (
         context.uid === 'api::article.article' &&
         context.action === 'publish'
@@ -112,11 +111,10 @@ export default {
         const message = `${title}\n\n${description}\n\nRead more: ${postUrl}`;
 
         await Promise.allSettled([
-          postToLinkedIn(strapi, title, description, postUrl),
+          // postToLinkedIn(strapi, title, description, postUrl),
           postToFacebook(strapi, message, postUrl),
         ]);
       }
-        */
 
       return result;
     });
